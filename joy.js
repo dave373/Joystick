@@ -59,6 +59,9 @@ var JoyStick = (function(container, parameters)
 	var title = (typeof parameters.title === "undefined" ? "joystick" : parameters.title),
 		width = (typeof parameters.width === "undefined" ? 0 : parameters.width),
 		height = (typeof parameters.height === "undefined" ? 0 : parameters.height),
+		limitX = (typeof parameters.limitX === "undefined" ? 1 : parameters.limitX),
+		limitY = (typeof parameters.limitY === "undefined" ? 1 : parameters.limitY),
+
 		internalFillColor = (typeof parameters.internalFillColor === "undefined" ? "#00AA00" : parameters.internalFillColor),
 		internalLineWidth = (typeof parameters.internalLineWidth === "undefined" ? 2 : parameters.internalLineWidth),
 		internalStrokeColor = (typeof parameters.internalStrokeColor === "undefined" ? "#003300" : parameters.internalStrokeColor),
@@ -80,7 +83,8 @@ var JoyStick = (function(container, parameters)
 	var pressed = 0; // Bool - 1=Yes - 0=No
     var circumference = 2 * Math.PI;
     var internalRadius = (canvas.width-((canvas.width/2)+10))/2;
-	var maxMoveStick = internalRadius + 5;
+	var maxMoveStickX = limitX * (internalRadius + 5);
+	var maxMoveStickY = limitY * (internalRadius + 5);
 	var externalRadius = internalRadius + 30;
 	var centerX = canvas.width / 2;
 	var centerY = canvas.height / 2;
@@ -98,12 +102,16 @@ var JoyStick = (function(container, parameters)
 		canvas.addEventListener("touchstart", onTouchStart, false);
 		canvas.addEventListener("touchmove", onTouchMove, false);
 		canvas.addEventListener("touchend", onTouchEnd, false);
+		objContainer.addEventListener("touchleave", onTouchEnd, false);
+		
 	}
 	else
 	{
 		canvas.addEventListener("mousedown", onMouseDown, false);
 		canvas.addEventListener("mousemove", onMouseMove, false);
 		canvas.addEventListener("mouseup", onMouseUp, false);
+		objContainer.addEventListener("mouseleave", onMouseUp, false);
+		
 	}
 	// Draw the object
 	drawExternal();
@@ -119,7 +127,25 @@ var JoyStick = (function(container, parameters)
 	function drawExternal()
 	{
 		context.beginPath();
-		context.arc(centerX, centerY, externalRadius, 0, circumference, false);
+		if (limitX == 1 && limitY == 1) {
+			context.arc(centerX, centerY, externalRadius, 0, circumference, false);
+		}
+		else if (limitX == 0 && limitY == 1) {
+			movedX = centerX;
+			// Only Y movements.. so arcs at top and bottom
+			context.arc(centerX, externalRadius-internalRadius, internalRadius, -Math.PI/2, Math.PI/2, false);
+			//context.lineTo(internalRadius/2,externalRadius-internalRadius);
+			//context.arc(centerX, -(externalRadius-internalRadius), internalRadius, Math.PI/2, -Math.PI/2, false);
+			//context.lineTo(-internalRadius/2,-externalRadius-internalRadius);
+		}
+		else if (limitX == 1 && limitY == 0) {
+			movedY = centerY;
+			// Only X movements.. so arcs at left and right
+			context.arc(centerX-externalRadius+internalRadius, centerY, internalRadius, Math.PI/2, -Math.PI/2, false);
+			context.lineTo(centerX+externalRadius-internalRadius,centerY-internalRadius);
+			context.arc(centerX+externalRadius-internalRadius, centerY, internalRadius, -Math.PI/2, Math.PI/2, false);
+			context.lineTo(centerX-externalRadius+internalRadius,centerY+internalRadius);
+		}
 		context.lineWidth = externalLineWidth;
 		context.strokeStyle = externalStrokeColor;
 		context.stroke();
@@ -131,10 +157,10 @@ var JoyStick = (function(container, parameters)
 	function drawInternal()
 	{
 		context.beginPath();
-		if(movedX<internalRadius) { movedX=maxMoveStick; }
-		if((movedX+internalRadius) > canvas.width) { movedX = canvas.width-(maxMoveStick); }
-		if(movedY<internalRadius) { movedY=maxMoveStick; }
-		if((movedY+internalRadius) > canvas.height) { movedY = canvas.height-(maxMoveStick); }
+		if(movedX<internalRadius) { movedX=maxMoveStickX; }
+		if((movedX+internalRadius) > canvas.width) { movedX = canvas.width-(maxMoveStickX); }
+		if(movedY<internalRadius) { movedY=maxMoveStickY; }
+		if((movedY+internalRadius) > canvas.height) { movedY = canvas.height-(maxMoveStickY); }
 		context.arc(movedX, movedY, internalRadius, 0, circumference, false);
 		// create radial gradient
 		var grd = context.createRadialGradient(centerX, centerY, 5, centerX, centerY, 200);
@@ -297,7 +323,7 @@ var JoyStick = (function(container, parameters)
 	 */
 	this.GetX = function ()
 	{
-		return (100*((movedX - centerX)/maxMoveStick)).toFixed();
+		return (100*((movedX - centerX)/maxMoveStickX)).toFixed();
 	};
 
 	/**
@@ -306,7 +332,7 @@ var JoyStick = (function(container, parameters)
 	 */
 	this.GetY = function ()
 	{
-		return ((100*((movedY - centerY)/maxMoveStick))*-1).toFixed();
+		return ((100*((movedY - centerY)/maxMoveStickY))*-1).toFixed();
 	};
 	
 	/**
